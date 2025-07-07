@@ -15,7 +15,7 @@ load_dotenv()
 app = FastAPI(
     title="Language Practice Tutor API",
     description="An API to practice languages with an AI tutor. This API is stateless.",
-    version="1.0.2", # Incremented version
+    version="1.0.3", # Incremented version
 )
 
 # --- 2. Setup OpenAI Client (DEFERRED) ---
@@ -78,7 +78,7 @@ class ChatResponse(BaseModel):
 # --- 5. API Endpoint Definition ---
 @app.get("/")
 async def read_root():
-    return {"message": "Welcome ;) Chat practicing For Turjuman is running.", "version": "1.0.2"}
+    return {"message": "Welcome ;) Chat practicing For Turjuman is running.", "version": "1.0.3"}
 
 @app.post("/chat", response_model=ChatResponse, tags=["Chat"])
 async def handle_chat(request: ChatRequest):
@@ -86,7 +86,7 @@ async def handle_chat(request: ChatRequest):
         if not API_KEY:
             raise ValueError("ROUTER_API_KEY is not set.")
 
-        # **FIXED**: Initialize the client inside the function
+        # Initialize the client inside the function
         client = openai.OpenAI(
             api_key=API_KEY,
             base_url="https://router.requesty.ai/v1"
@@ -128,6 +128,5 @@ async def handle_chat(request: ChatRequest):
 # --- 6. Application Runner ---
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 8000))
-    uvicorn.run("main:app", host="0.0.0.0", port=port, reload=True)
-
-
+    # **FIXED**: Removed `reload=True` for production deployment
+    uvicorn.run("main:app", host="0.0.0.0", port=port)
