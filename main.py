@@ -10,14 +10,14 @@ from typing import List, Dict
 
 # --- 1. Initial Setup ---
 
-# Load environment variables from a .env file
+# Load environment variables from a .env file (useful for local development)
 load_dotenv()
 
 # Initialize the FastAPI application
 app = FastAPI(
     title="Language Practice Tutor API",
     description="An API to practice languages with an AI tutor. This API is stateless.",
-    version="1.0.0",
+    version="1.0.1", # Incremented version
 )
 
 # --- 2. Setup OpenAI Client ---
@@ -60,7 +60,7 @@ Your default behavior is to correct the user's mistakes. Prioritize conversation
 3. Language Adaptation Based on User Level:
 You must adapt your language to the user's stated proficiency level: [{USER_LEVEL}].
 For Beginners (A1-A2): Use very simple sentences and common vocabulary. Be very encouraging. The main goal is to make them feel comfortable speaking.
-For Intermediate (B1-B2): Use natural, everyday language. You can occasionally introduce a common idiom or expression, but always keep the conversation flowing smoothly.
+for Intermediate (B1-B2): Use natural, everyday language. You can occasionally introduce a common idiom or expression, but always keep the conversation flowing smoothly.
 For Advanced (C1-C2): You can use more complex sentence structures and richer vocabulary, but always maintain the core principles of being conversational, brief, and encouraging.
 
 Getting Started
@@ -80,7 +80,8 @@ class ChatRequest(BaseModel):
     chat_history: List[Dict[str, str]] # e.g., [{"role": "user", "content": "Hello"}]
 
     class Config:
-        schema_extra = {
+        # **FIXED**: Changed 'schema_extra' to 'json_schema_extra' for Pydantic V2
+        json_schema_extra = {
             "example": {
                 "target_language": "Spanish",
                 "user_level": "B1",
@@ -104,7 +105,7 @@ async def read_root():
     """Root endpoint returning basic API info."""
     return {"message": "Welcome ;) Chat practicing For Turjuman is running.", "version": "1.0.0"}
 
-
+    
 @app.post("/chat", response_model=ChatResponse, tags=["Chat"])
 async def handle_chat(request: ChatRequest):
     """
@@ -166,6 +167,7 @@ async def handle_chat(request: ChatRequest):
 # --- 6. Application Runner ---
 
 if __name__ == "__main__":
-    # Runs the application using uvicorn, a lightning-fast ASGI server.
-    # The app will be available at http://127.0.0.1:8000
-    uvicorn.run("main:app", host="127.0.0.1", port=8000, reload=True)
+    # **FIXED**: Get port from environment variables for deployment platforms like Railway
+    port = int(os.environ.get("PORT", 8000))
+    # **FIXED**: Use host "0.0.0.0" to be accessible in a container
+    uvicorn.run("main:app", host="0.0.0.0", port=port, reload=True)
