@@ -10,35 +10,22 @@ from typing import List, Dict
 
 # --- 1. Initial Setup ---
 
-# Load environment variables from a .env file (useful for local development)
 load_dotenv()
 
-# Initialize the FastAPI application
 app = FastAPI(
     title="Language Practice Tutor API",
     description="An API to practice languages with an AI tutor. This API is stateless.",
-    version="1.0.1", # Incremented version
+    version="1.0.2", # Incremented version
 )
 
-# --- 2. Setup OpenAI Client ---
+# --- 2. Setup OpenAI Client (DEFERRED) ---
 
-# It's recommended to use a more descriptive variable name for the key
-# For example, REQUESTY_API_KEY if you are using Requesty.ai
-API_KEY = os.getenv("ROUTER_API_KEY") 
-if not API_KEY:
-    raise ValueError("API key not found. Please add it to your .env file.")
+# We no longer initialize the client here to prevent blocking app startup.
+# The client will be initialized inside the endpoint that needs it.
 
-# Initialize the client to connect to the LLM service
-client = openai.OpenAI(
-    api_key=API_KEY,
-    base_url="https://router.requesty.ai/v1" # This can be changed to any OpenAI-compatible endpoint
-)
-
+API_KEY = os.getenv("ROUTER_API_KEY")
 
 # --- 3. System Prompt Definition ---
-
-# This prompt defines the persona and rules for the AI tutor.
-# It uses placeholders for dynamic values like target language and user level.
 the_chatter_prompt = """
 Persona & Role Definition
 You are Ahmed, a 23-year-old language tutor.
@@ -66,65 +53,47 @@ For Advanced (C1-C2): You can use more complex sentence structures and richer vo
 Getting Started
 Begin the very first interaction by introducing yourself as Ahmed and asking a simple, open-ended question related to your interests to start the chat.
 """
-
-# --- 4. API Data Models (Input/Output Schemas) ---
+# --- 4. API Data Models ---
 
 class ChatRequest(BaseModel):
-    """
-    Defines the expected input for a chat request.
-    The client is responsible for maintaining and sending the chat history.
-    """
     target_language: str
     user_level: str
     user_message: str
-    chat_history: List[Dict[str, str]] # e.g., [{"role": "user", "content": "Hello"}]
+    chat_history: List[Dict[str, str]]
 
     class Config:
-        # **FIXED**: Changed 'schema_extra' to 'json_schema_extra' for Pydantic V2
         json_schema_extra = {
             "example": {
                 "target_language": "Spanish",
                 "user_level": "B1",
                 "user_message": "Hola, como estas?",
-                "chat_history": [] 
+                "chat_history": []
             }
         }
 
 class ChatResponse(BaseModel):
-    """
-    Defines the output returned by the API.
-    Includes the tutor's response and the complete, updated chat history.
-    """
     tutor_response: str
     updated_chat_history: List[Dict[str, str]]
-
 
 # --- 5. API Endpoint Definition ---
 @app.get("/")
 async def read_root():
-    """Root endpoint returning basic API info."""
-    return {"message": "Welcome ;) Chat practicing For Turjuman is running.", "version": "1.0.0"}
+    return {"message": "Welcome ;) Chat practicing For Turjuman is running.", "version": "1.0.2"}
 
-    
 @app.post("/chat", response_model=ChatResponse, tags=["Chat"])
 async def handle_chat(request: ChatRequest):
-    """
-    Processes a user's message and returns the AI tutor's response.
-
-    This endpoint is stateless. It relies on the `chat_history` provided in the
-    request body to maintain conversation context.
-
-    - **On the first turn**, send an empty `chat_history` list. The system will
-      initialize the conversation with the system prompt.
-    - **On subsequent turns**, send the `updated_chat_history` received from the
-      previous API response.
-    """
     try:
-        # Make a mutable copy of the history from the request
+        if not API_KEY:
+            raise ValueError("ROUTER_API_KEY is not set.")
+
+        # **FIXED**: Initialize the client inside the function
+        client = openai.OpenAI(
+            api_key=API_KEY,
+            base_url="https://router.requesty.ai/v1"
+        )
+        
         current_history = list(request.chat_history)
 
-        # If the history is empty, it's the start of a new conversation.
-        # Initialize it with the system prompt.
         if not current_history:
             formatted_prompt = the_chatter_prompt.format(
                 TARGET_LANGUAGE=request.target_language,
@@ -132,42 +101,39 @@ async def handle_chat(request: ChatRequest):
             )
             current_history.append({"role": "system", "content": formatted_prompt})
 
-        # Add the new user message to the history
         current_history.append({"role": "user", "content": request.user_message})
 
-        # Call the LLM API
         response = client.chat.completions.create(
-            model='openai/gpt-4o-mini', # This can be any model you have access to
+            model='openai/gpt-4o-mini',
             messages=current_history
         )
-
+        
         if not response.choices:
             raise Exception("No response choices found from the model.")
 
-        # Extract the assistant's reply
         llm_response_content = response.choices[0].message.content
-
-        # Add the assistant's reply to the history
         current_history.append({"role": "assistant", "content": llm_response_content})
 
-        # Return the response and the updated history
         return ChatResponse(
             tutor_response=llm_response_content,
             updated_chat_history=current_history
         )
-
     except Exception as e:
         print(f"An error occurred: {e}")
-        # Return a generic error response to the client
         return JSONResponse(
             status_code=500,
-            content={"detail": "An internal server error occurred."}
+            content={"detail": str(e) or "An internal server error occurred."}
         )
 
 # --- 6. Application Runner ---
-
 if __name__ == "__main__":
-    # **FIXED**: Get port from environment variables for deployment platforms like Railway
     port = int(os.environ.get("PORT", 8000))
-    # **FIXED**: Use host "0.0.0.0" to be accessible in a container
     uvicorn.run("main:app", host="0.0.0.0", port=port, reload=True)
+```
+
+### الخطوات التالية:
+
+1.  **انسخ الكود المحدث** وقم باستبدال الكود القديم به.
+2.  **قم بعمل deploy** للتغييرات على Railway.
+3.  **بعد اكتمال النشر،** اختبر الأمر عن طريق زيارة الرابط الرئيسي أولاً: `https://your-app-name.up.railway.app/`. من المفترض الآن أن يعمل ويعرض لك رسالة الترحيب فورًا.
+4.  إذا نجح ذلك، يمكنك اختبار وظيفة الدردشة الأساسية عبر إرسال طلب `POST` إلى `/cha
