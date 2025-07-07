@@ -99,6 +99,11 @@ class ChatResponse(BaseModel):
 
 
 # --- 5. API Endpoint Definition ---
+@app.get("/")
+async def read_root():
+    """Root endpoint returning basic API info."""
+    return {"message": "Welcome ;) Chat practicing For Turjuman is running.", "version": "1.0.0"}
+
 
 @app.post("/chat", response_model=ChatResponse, tags=["Chat"])
 async def handle_chat(request: ChatRequest):
