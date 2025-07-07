@@ -129,11 +129,5 @@ async def handle_chat(request: ChatRequest):
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 8000))
     uvicorn.run("main:app", host="0.0.0.0", port=port, reload=True)
-```
 
-### الخطوات التالية:
 
-1.  **انسخ الكود المحدث** وقم باستبدال الكود القديم به.
-2.  **قم بعمل deploy** للتغييرات على Railway.
-3.  **بعد اكتمال النشر،** اختبر الأمر عن طريق زيارة الرابط الرئيسي أولاً: `https://your-app-name.up.railway.app/`. من المفترض الآن أن يعمل ويعرض لك رسالة الترحيب فورًا.
-4.  إذا نجح ذلك، يمكنك اختبار وظيفة الدردشة الأساسية عبر إرسال طلب `POST` إلى `/cha
